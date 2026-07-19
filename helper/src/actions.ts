@@ -88,6 +88,17 @@ async function psql(sql: string) {
   return execFileAsync("sudo", ["-u", "postgres", "psql", "-v", "ON_ERROR_STOP=1", "-c", sql]);
 }
 
+const DOMAIN_RE = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function assertValidDomain(domain: string) {
+  if (!domain || !DOMAIN_RE.test(domain)) throw new Error(`invalid domain "${domain}"`);
+}
+
+function assertValidEmail(email: string) {
+  if (!email || !EMAIL_RE.test(email)) throw new Error(`invalid email "${email}"`);
+}
+
 /**
  * Every entry here is a fixed function that calls execFile with an array of
  * arguments - never a template string handed to a shell. This is the entire
@@ -300,5 +311,40 @@ export const actions: Record<string, (args: Record<string, string>) => Promise<s
     await fs.chmod(fullPath, 0o640);
 
     return filename;
+  },
+
+  "certbot.list": async () => {
+    const { stdout } = await execFileAsync("certbot", ["certificates"]);
+    return stdout;
+  },
+
+  "certbot.renew": async (args) => {
+    const certName = args.certName ?? "";
+    assertValidDomain(certName);
+    // Certbot's own renew command is a safe no-op unless the cert is
+    // actually within its renewal window (~30 days of expiry) - it doesn't
+    // hit Let's Encrypt at all otherwise.
+    const { stdout, stderr } = await execFileAsync("certbot", ["renew", "--cert-name", certName, "--non-interactive"]);
+    return stdout + stderr;
+  },
+
+  "certbot.obtain": async (args) => {
+    const domain = args.domain ?? "";
+    const email = args.email ?? "";
+    assertValidDomain(domain);
+    assertValidEmail(email);
+    // Requires an existing nginx server block whose server_name matches
+    // `domain` - the --nginx plugin edits that block in place to add SSL.
+    const { stdout, stderr } = await execFileAsync("certbot", [
+      "--nginx",
+      "-d",
+      domain,
+      "--non-interactive",
+      "--agree-tos",
+      "-m",
+      email,
+      "--redirect",
+    ]);
+    return stdout + stderr;
   },
 };
