@@ -1,0 +1,68 @@
+.db-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.credentials-banner {
+  background: var(--success-100);
+  border: 1px solid var(--success-500);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.credentials-banner-title {
+  font-weight: 700;
+  color: var(--success-500);
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.credentials-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  margin-bottom: 4px;
+}
+
+.credentials-row .label {
+  color: var(--text-secondary);
+  min-width: 90px;
+  font-family: var(--font-sans);
+}
+
+.credentials-warning {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.create-db-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.create-db-form input {
+  flex: 1;
+  max-width: 280px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  font-size: 13px;
+}
+
+.db-name-cell {
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+}

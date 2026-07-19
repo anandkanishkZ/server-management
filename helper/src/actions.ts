@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
 import path from "node:path";
+import crypto from "node:crypto";
 
 const execFileAsync = promisify(execFile);
 
@@ -66,6 +67,25 @@ function assertValidRuleNumber(n: string) {
 
 function assertValidJailName(jail: string) {
   if (!jail || !JAIL_NAME_RE.test(jail)) throw new Error(`invalid jail name "${jail}"`);
+}
+
+const DB_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]{0,62}$/;
+const PROTECTED_DBS = new Set(["postgres", "template0", "template1", "panel"]);
+const DUMP_DIR = "/tmp/panel-dumps";
+// Must match the OS user panel-api actually runs as, so it can read dump
+// files back after pg_dump (which runs as "postgres") writes them.
+const PANEL_OS_USER = process.env.PANEL_OS_USER ?? "ubuntu";
+
+function assertValidDbName(name: string) {
+  if (!name || !DB_NAME_RE.test(name)) throw new Error(`invalid database name "${name}"`);
+}
+
+function assertNotProtected(name: string) {
+  if (PROTECTED_DBS.has(name)) throw new Error(`"${name}" is a protected database and cannot be dropped`);
+}
+
+async function psql(sql: string) {
+  return execFileAsync("sudo", ["-u", "postgres", "psql", "-v", "ON_ERROR_STOP=1", "-c", sql]);
 }
 
 /**
@@ -215,5 +235,70 @@ export const actions: Record<string, (args: Record<string, string>) => Promise<s
     assertValidIp(ip);
     const { stdout } = await execFileAsync("fail2ban-client", ["set", jail, "unbanip", ip]);
     return stdout;
+  },
+
+  "db.list": async () => {
+    const { stdout } = await execFileAsync("sudo", [
+      "-u",
+      "postgres",
+      "psql",
+      "-tA",
+      "-F",
+      "\t",
+      "-c",
+      "SELECT datname, pg_catalog.pg_get_userbyid(datdba), pg_size_pretty(pg_database_size(datname)) FROM pg_database WHERE datistemplate = false ORDER BY datname;",
+    ]);
+    return stdout;
+  },
+
+  "db.create": async (args) => {
+    const name = args.name ?? "";
+    assertValidDbName(name);
+
+    const password = crypto.randomBytes(18).toString("base64").replace(/[/+=]/g, "");
+    await psql(`CREATE ROLE "${name}" LOGIN PASSWORD '${password}';`);
+    try {
+      await psql(`CREATE DATABASE "${name}" OWNER "${name}";`);
+    } catch (err) {
+      // Roll back the role so a failed create doesn't leave an orphan login.
+      await psql(`DROP ROLE IF EXISTS "${name}";`).catch(() => {});
+      throw err;
+    }
+
+    return `${name}\t${password}`;
+  },
+
+  "db.drop": async (args) => {
+    const name = args.name ?? "";
+    assertValidDbName(name);
+    assertNotProtected(name);
+
+    // A DB with active connections can't be dropped - terminate them first,
+    // same as any admin would need to before running DROP DATABASE by hand.
+    await psql(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${name}';`).catch(() => {});
+    await psql(`DROP DATABASE "${name}";`);
+    return `${name} dropped`;
+  },
+
+  "db.dump": async (args) => {
+    const name = args.name ?? "";
+    assertValidDbName(name);
+
+    // Both "postgres" (pg_dump) and the panel's own OS user need to write/
+    // read here, so the directory itself is sticky-bit world-writable like
+    // /tmp - each individual dump file is still locked to 640 right after
+    // it's created, which is the actual access boundary.
+    await fs.mkdir(DUMP_DIR, { recursive: true, mode: 0o1777 });
+    await fs.chmod(DUMP_DIR, 0o1777);
+    const filename = `${name}-${Date.now()}.sql`;
+    const fullPath = path.join(DUMP_DIR, filename);
+
+    await execFileAsync("sudo", ["-u", "postgres", "pg_dump", "-f", fullPath, name]);
+    // pg_dump ran as postgres, so the dump file is owned by postgres - hand
+    // it back to the unprivileged panel user so the API process can read it.
+    await execFileAsync("chown", [`${PANEL_OS_USER}:${PANEL_OS_USER}`, fullPath]);
+    await fs.chmod(fullPath, 0o640);
+
+    return filename;
   },
 };

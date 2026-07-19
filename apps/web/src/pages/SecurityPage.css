@@ -32,37 +32,6 @@
   background: var(--danger-100);
 }
 
-.rules-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  font-size: 13px;
-}
-
-.rules-table th {
-  text-align: left;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-secondary);
-  padding: 10px 16px;
-  background: var(--gray-50);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.rules-table td {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border-subtle);
-  color: var(--text-primary);
-}
-
-.rules-table tr:last-child td {
-  border-bottom: none;
-}
-
 .rule-action-allow {
   color: var(--success-500);
   font-weight: 600;
@@ -171,22 +140,6 @@
 
 .banned-ip-row:first-of-type {
   border-top: none;
-}
-
-.unban-btn {
-  background: none;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill);
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.unban-btn:hover {
-  background: var(--gray-100);
-  color: var(--text-primary);
 }
 
 .ban-ip-form {
