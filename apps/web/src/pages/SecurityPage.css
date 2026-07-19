@@ -1,0 +1,214 @@
+.security-section {
+  margin-bottom: 32px;
+}
+
+.security-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.security-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.security-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-danger {
+  border-color: var(--danger-500);
+  color: var(--danger-500);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-100);
+}
+
+.rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.rules-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  padding: 10px 16px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.rules-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.rules-table tr:last-child td {
+  border-bottom: none;
+}
+
+.rule-action-allow {
+  color: var(--success-500);
+  font-weight: 600;
+}
+
+.rule-action-deny {
+  color: var(--danger-500);
+  font-weight: 600;
+}
+
+.add-rule-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.add-rule-form input,
+.add-rule-form select {
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.rule-mode-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--gray-100);
+  padding: 3px;
+  border-radius: var(--radius-pill);
+}
+
+.rule-mode-tab {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.rule-mode-tab.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.jail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.jail-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+}
+
+.jail-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.jail-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.jail-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.jail-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.jail-stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.banned-ip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.banned-ip-row:first-of-type {
+  border-top: none;
+}
+
+.unban-btn {
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.unban-btn:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+.ban-ip-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.ban-ip-form input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  font-size: 12.5px;
+}
+
+.install-prompt {
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+}

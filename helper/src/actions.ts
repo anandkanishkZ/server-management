@@ -44,6 +44,30 @@ async function testNginxConfig() {
   }
 }
 
+const IP_RE = /^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/;
+const JAIL_NAME_RE = /^[a-zA-Z0-9._-]+$/;
+
+function assertValidIp(ip: string) {
+  if (!IP_RE.test(ip)) throw new Error(`invalid IP/CIDR "${ip}"`);
+}
+
+function assertValidPort(port: string) {
+  const n = Number(port);
+  if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error(`invalid port "${port}"`);
+}
+
+function assertValidProto(proto: string) {
+  if (proto !== "tcp" && proto !== "udp") throw new Error(`invalid protocol "${proto}"`);
+}
+
+function assertValidRuleNumber(n: string) {
+  if (!/^\d+$/.test(n)) throw new Error(`invalid rule number "${n}"`);
+}
+
+function assertValidJailName(jail: string) {
+  if (!jail || !JAIL_NAME_RE.test(jail)) throw new Error(`invalid jail name "${jail}"`);
+}
+
 /**
  * Every entry here is a fixed function that calls execFile with an array of
  * arguments - never a template string handed to a shell. This is the entire
@@ -117,5 +141,79 @@ export const actions: Record<string, (args: Record<string, string>) => Promise<s
     assertAllowedService(service);
     const { stdout, stderr } = await execFileAsync("systemctl", ["restart", service]);
     return stdout + stderr;
+  },
+
+  "ufw.status": async () => {
+    const { stdout } = await execFileAsync("ufw", ["status", "numbered"]);
+    return stdout;
+  },
+
+  "ufw.enable": async () => {
+    const { stdout, stderr } = await execFileAsync("ufw", ["--force", "enable"]);
+    return stdout + stderr;
+  },
+
+  "ufw.disable": async () => {
+    const { stdout, stderr } = await execFileAsync("ufw", ["disable"]);
+    return stdout + stderr;
+  },
+
+  "ufw.allow": async (args) => {
+    const port = args.port ?? "";
+    const proto = args.proto ?? "";
+    assertValidPort(port);
+    assertValidProto(proto);
+    const { stdout, stderr } = await execFileAsync("ufw", ["allow", `${port}/${proto}`]);
+    return stdout + stderr;
+  },
+
+  "ufw.deny": async (args) => {
+    const ip = args.ip ?? "";
+    assertValidIp(ip);
+    const { stdout, stderr } = await execFileAsync("ufw", ["deny", "from", ip]);
+    return stdout + stderr;
+  },
+
+  "ufw.delete": async (args) => {
+    const number = args.number ?? "";
+    assertValidRuleNumber(number);
+    const { stdout, stderr } = await execFileAsync("ufw", ["--force", "delete", number]);
+    return stdout + stderr;
+  },
+
+  "fail2ban.install": async () => {
+    await execFileAsync("apt-get", ["install", "-y", "fail2ban"]);
+    await execFileAsync("systemctl", ["enable", "--now", "fail2ban"]);
+    return "fail2ban installed and started";
+  },
+
+  "fail2ban.status": async () => {
+    const { stdout } = await execFileAsync("fail2ban-client", ["status"]);
+    return stdout;
+  },
+
+  "fail2ban.jailStatus": async (args) => {
+    const jail = args.jail ?? "";
+    assertValidJailName(jail);
+    const { stdout } = await execFileAsync("fail2ban-client", ["status", jail]);
+    return stdout;
+  },
+
+  "fail2ban.ban": async (args) => {
+    const jail = args.jail ?? "";
+    const ip = args.ip ?? "";
+    assertValidJailName(jail);
+    assertValidIp(ip);
+    const { stdout } = await execFileAsync("fail2ban-client", ["set", jail, "banip", ip]);
+    return stdout;
+  },
+
+  "fail2ban.unban": async (args) => {
+    const jail = args.jail ?? "";
+    const ip = args.ip ?? "";
+    assertValidJailName(jail);
+    assertValidIp(ip);
+    const { stdout } = await execFileAsync("fail2ban-client", ["set", jail, "unbanip", ip]);
+    return stdout;
   },
 };

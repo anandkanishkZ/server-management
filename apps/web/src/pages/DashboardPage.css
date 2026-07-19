@@ -405,17 +405,3 @@
   gap: 14px;
 }
 
-.skeleton-spinner {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 3px solid var(--border-subtle);
-  border-top-color: var(--brand-500);
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
