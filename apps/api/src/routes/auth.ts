@@ -13,6 +13,10 @@ const loginSchema = z.object({
 });
 
 const REFRESH_COOKIE = "panel_refresh";
+// Browsers silently drop `Secure` cookies over plain HTTP. Default to secure
+// (required once this sits behind TLS), but allow disabling it for an
+// HTTP-only deployment via COOKIE_SECURE=false.
+const COOKIE_SECURE = process.env.COOKIE_SECURE !== "false";
 
 export default async function authRoutes(app: FastifyInstance) {
   app.post("/auth/login", async (req, reply) => {
@@ -55,9 +59,9 @@ export default async function authRoutes(app: FastifyInstance) {
 
     reply.setCookie(REFRESH_COOKIE, refreshToken, {
       httpOnly: true,
-      secure: true,
+      secure: COOKIE_SECURE,
       sameSite: "strict",
-      path: "/auth",
+      path: "/api/auth",
       expires: expiresAt,
     });
 
@@ -81,7 +85,7 @@ export default async function authRoutes(app: FastifyInstance) {
     }
 
     const accessToken = signAccessToken({ sub: stored.user.id, role: stored.user.role });
-    return { accessToken };
+    return { accessToken, user: { id: stored.user.id, email: stored.user.email, role: stored.user.role } };
   });
 
   app.post("/auth/logout", async (req, reply) => {
@@ -93,7 +97,7 @@ export default async function authRoutes(app: FastifyInstance) {
         data: { revokedAt: new Date() },
       });
     }
-    reply.clearCookie(REFRESH_COOKIE, { path: "/auth" });
+    reply.clearCookie(REFRESH_COOKIE, { path: "/api/auth" });
     return { ok: true };
   });
 }

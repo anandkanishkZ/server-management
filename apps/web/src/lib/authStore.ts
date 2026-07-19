@@ -9,9 +9,11 @@ export interface AuthUser {
 interface AuthState {
   accessToken: string | null;
   user: AuthUser | null;
+  /** True until the initial silent-refresh attempt (on page load) resolves. */
+  initializing: boolean;
 }
 
-let state: AuthState = { accessToken: null, user: null };
+let state: AuthState = { accessToken: null, user: null, initializing: true };
 const listeners = new Set<() => void>();
 
 function setState(next: Partial<AuthState>) {
@@ -30,6 +32,10 @@ export function setSession(token: string | null, user: AuthUser | null) {
 
 export function setAccessToken(token: string | null) {
   setState({ accessToken: token });
+}
+
+export function setInitializing(value: boolean) {
+  setState({ initializing: value });
 }
 
 export function getAccessToken() {
