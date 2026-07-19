@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
+import SitesPage from "./pages/SitesPage";
 import { useAuthStore } from "./lib/authStore";
 import "./styles/theme.css";
 
@@ -22,6 +23,14 @@ function App() {
           element={
             <RequireAuth>
               <DashboardPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/sites"
+          element={
+            <RequireAuth>
+              <SitesPage />
             </RequireAuth>
           }
         />

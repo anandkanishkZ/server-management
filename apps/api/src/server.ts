@@ -9,6 +9,7 @@ import prismaPlugin from "./plugins/prisma.js";
 import authenticatePlugin from "./plugins/authenticate.js";
 import authRoutes from "./routes/auth.js";
 import systemRoutes from "./routes/system.js";
+import sitesRoutes from "./routes/sites.js";
 
 const app = Fastify({ logger: true });
 
@@ -22,6 +23,7 @@ await app.register(authenticatePlugin);
 
 await app.register(authRoutes);
 await app.register(systemRoutes);
+await app.register(sitesRoutes);
 
 app.get("/health", async () => ({ ok: true }));
 

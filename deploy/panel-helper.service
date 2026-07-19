@@ -10,6 +10,9 @@ RuntimeDirectoryMode=0750
 Environment=HELPER_SOCKET_PATH=/run/panel/helper.sock
 WorkingDirectory=/opt/panel/helper
 ExecStart=/usr/bin/node dist/index.js
+# Group must match the group of the OS user running the API process (panel-api),
+# so it can connect to this socket without being root itself. Adjust "panel" to
+# whatever that user's primary/supplementary group actually is on your box.
 ExecStartPost=/bin/chgrp panel /run/panel/helper.sock
 Restart=on-failure
 RestartSec=3

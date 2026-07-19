@@ -13,7 +13,11 @@ if (fs.existsSync(SOCKET_PATH)) {
   fs.unlinkSync(SOCKET_PATH);
 }
 
-const server = net.createServer((socket) => {
+// allowHalfOpen: true is required here - without it, Node auto-closes this
+// socket's writable side the instant the client's FIN arrives (the default
+// "end" behavior), racing ahead of the async action handler below, which
+// hasn't written its response yet.
+const server = net.createServer({ allowHalfOpen: true }, (socket) => {
   let buffer = "";
 
   socket.on("data", (chunk) => {

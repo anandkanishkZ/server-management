@@ -23,8 +23,15 @@ export function callHelper(request: HelperRequest): Promise<HelperResponse> {
     const socket = net.createConnection(SOCKET_PATH);
     let data = "";
 
+    socket.setTimeout(10_000, () => {
+      socket.destroy();
+      reject(new Error("Timed out waiting for the privileged helper"));
+    });
+
     socket.on("connect", () => {
-      socket.write(JSON.stringify(request) + "\n");
+      // Half-close after writing so the helper's `on("end")` read-loop knows
+      // the request is complete and can start processing it.
+      socket.end(JSON.stringify(request) + "\n");
     });
 
     socket.on("data", (chunk) => {

@@ -3,7 +3,9 @@ import { getAccessToken } from "./authStore";
 export async function apiFetch(path: string, init: RequestInit = {}) {
   const token = getAccessToken();
   const headers = new Headers(init.headers);
-  headers.set("Content-Type", "application/json");
+  // Fastify's JSON body parser rejects a request that declares this content
+  // type but sends no body, so only set it when there actually is one.
+  if (init.body !== undefined) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const res = await fetch(`/api${path}`, { ...init, headers, credentials: "include" });
