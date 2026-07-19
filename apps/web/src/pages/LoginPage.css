@@ -4,10 +4,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background:
-    radial-gradient(circle at 15% 15%, rgb(99 102 241 / 0.14), transparent 45%),
-    radial-gradient(circle at 85% 85%, rgb(67 56 202 / 0.12), transparent 45%),
-    var(--bg-app);
+  background: var(--bg-app);
 }
 
 .login-card {
@@ -129,14 +126,13 @@
   width: 100%;
   padding: 11px 16px;
   border: none;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  border-radius: var(--radius-pill);
+  background: var(--brand-500);
   color: #fff;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgb(79 70 229 / 0.35);
-  transition: transform 0.1s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,7 +140,7 @@
 }
 
 .submit-button:hover:not(:disabled) {
-  box-shadow: 0 6px 16px rgb(79 70 229 / 0.45);
+  background: var(--brand-600);
 }
 
 .submit-button:active:not(:disabled) {
@@ -178,18 +174,11 @@
   align-items: flex-start;
   gap: 8px;
   background: var(--danger-100);
-  color: #991b1b;
+  color: var(--danger-500);
   border-radius: var(--radius-md);
   padding: 10px 12px;
   font-size: 13px;
   line-height: 1.4;
-}
-
-@media (prefers-color-scheme: dark) {
-  .error-banner {
-    background: rgb(239 68 68 / 0.12);
-    color: #fca5a5;
-  }
 }
 
 .spinner {

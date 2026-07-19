@@ -16,12 +16,12 @@ export default function Logo({ size = 36 }: LogoProps) {
         fill="white"
         fillOpacity="0.65"
       />
-      <circle cx="13" cy="14" r="1.1" fill="#4f46e5" />
-      <circle cx="13" cy="22" r="1.1" fill="#4f46e5" />
+      <circle cx="13" cy="14" r="1.1" fill="#0a66c2" />
+      <circle cx="13" cy="22" r="1.1" fill="#0a66c2" />
       <defs>
         <linearGradient id="logo-gradient" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#6366f1" />
-          <stop offset="1" stopColor="#4338ca" />
+          <stop stopColor="#0a66c2" />
+          <stop offset="1" stopColor="#004182" />
         </linearGradient>
       </defs>
     </svg>

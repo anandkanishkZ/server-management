@@ -19,7 +19,7 @@ interface DynamicStats {
   memory: { total: number; used: number; free: number; swapTotal: number; swapUsed: number };
   disks: { fs: string; mount: string; size: number; used: number; use: number }[];
   uptime: number;
-  network: { iface: string; rxSec: number; txSec: number }[];
+  network: { iface: string; rxSec: number | null; txSec: number | null }[];
   processes: { all: number; running: number; sleeping: number; blocked: number };
 }
 
@@ -33,10 +33,11 @@ function fmtGb(n: number) {
   return bytesToGb(n).toFixed(1);
 }
 
-function fmtBytesPerSec(n: number) {
-  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1)} MB/s`;
-  if (n >= 1024) return `${(n / 1024).toFixed(1)} KB/s`;
-  return `${n.toFixed(0)} B/s`;
+function fmtBytesPerSec(n: number | null | undefined) {
+  const v = n ?? 0;
+  if (v >= 1024 ** 2) return `${(v / 1024 ** 2).toFixed(1)} MB/s`;
+  if (v >= 1024) return `${(v / 1024).toFixed(1)} KB/s`;
+  return `${v.toFixed(0)} B/s`;
 }
 
 function severity(pct: number): "" | "warn" | "danger" {
@@ -78,7 +79,7 @@ function RadialGauge({ value }: { value: number }) {
   const circumference = 2 * Math.PI * r;
   const pct = Math.max(0, Math.min(100, value));
   const offset = circumference * (1 - pct / 100);
-  const color = severity(pct) === "danger" ? "#ef4444" : severity(pct) === "warn" ? "#f59e0b" : "#6366f1";
+  const color = severity(pct) === "danger" ? "#b74700" : severity(pct) === "warn" ? "#915907" : "#0a66c2";
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)", flexShrink: 0 }}>
@@ -150,8 +151,8 @@ export default function DashboardPage() {
         cpuHistoryRef.current.push(dynamic.cpu.load);
         if (cpuHistoryRef.current.length > HISTORY_LENGTH) cpuHistoryRef.current.shift();
         for (const n of dynamic.network) {
-          pushHistory(netHistoryRef.current, `${n.iface}:rx`, n.rxSec);
-          pushHistory(netHistoryRef.current, `${n.iface}:tx`, n.txSec);
+          pushHistory(netHistoryRef.current, `${n.iface}:rx`, n.rxSec ?? 0);
+          pushHistory(netHistoryRef.current, `${n.iface}:tx`, n.txSec ?? 0);
         }
         setStats(dynamic);
         forceTick((t) => t + 1);
@@ -277,8 +278,30 @@ export default function DashboardPage() {
           {stats.cpu.cores.length > 1 && <CoreBars cores={stats.cpu.cores} />}
           <div className="trend-row">
             <span className="stat-caption">Load trend</span>
-            <Sparkline data={cpuHistoryRef.current} color="#6366f1" width={140} height={28} />
+            <Sparkline data={cpuHistoryRef.current} color="#0a66c2" width={140} height={28} />
           </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <DiskIcon /> Storage
+          </div>
+          {(() => {
+            const primary = stats.disks.find((d) => d.mount === "/") ?? stats.disks[0];
+            if (!primary) return <div className="stat-caption">No filesystems reported</div>;
+            const rest = stats.disks.length - 1;
+            return (
+              <>
+                <span className="stat-value">{fmtGb(primary.size)} GB</span>
+                <div className="stat-caption">
+                  {fmtGb(primary.used)} GB used ({primary.use.toFixed(0)}%){rest > 0 ? ` · +${rest} more mount${rest > 1 ? "s" : ""}` : ""}
+                </div>
+                <div className="bar-track">
+                  <div className={`bar-fill ${severity(primary.use)}`} style={{ width: `${primary.use}%` }} />
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         <div className="card">
@@ -357,33 +380,35 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="net-sparklines">
-                  <Sparkline data={rxHist} color="#6366f1" />
-                  <Sparkline data={txHist} color="#10b981" />
+                  <Sparkline data={rxHist} color="#0a66c2" />
+                  <Sparkline data={txHist} color="#057642" />
                 </div>
               </div>
             );
           })}
         </div>
 
-        <div className="card wide-card">
-          <div className="card-header">
-            <LayersIcon /> Disk Hardware
-          </div>
-          {staticInfo.disksLayout.map((d) => (
-            <div className="disk-hw-row" key={d.device}>
-              <div className="disk-hw-name">
-                {d.name || d.vendor || d.device}
-                <span className="badge badge-neutral">{d.type}</span>
-                {d.smartStatus && d.smartStatus !== "Unknown" && (
-                  <span className={`badge ${d.smartStatus === "Ok" ? "badge-success" : "badge-danger"}`}>SMART: {d.smartStatus}</span>
-                )}
-              </div>
-              <div className="disk-hw-meta">
-                {bytesToSize(d.size)} · {d.interfaceType || "Unknown interface"}
-              </div>
+        {staticInfo.disksLayout.length > 0 && (
+          <div className="card wide-card">
+            <div className="card-header">
+              <LayersIcon /> Disk Hardware
             </div>
-          ))}
-        </div>
+            {staticInfo.disksLayout.map((d) => (
+              <div className="disk-hw-row" key={d.device}>
+                <div className="disk-hw-name">
+                  {d.name || d.vendor || d.device}
+                  <span className="badge badge-neutral">{d.type}</span>
+                  {d.smartStatus && d.smartStatus !== "Unknown" && (
+                    <span className={`badge ${d.smartStatus === "Ok" ? "badge-success" : "badge-danger"}`}>SMART: {d.smartStatus}</span>
+                  )}
+                </div>
+                <div className="disk-hw-meta">
+                  {bytesToSize(d.size)} · {d.interfaceType || "Unknown interface"}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="card wide-card">
           <div className="card-header">
