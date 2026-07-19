@@ -1,0 +1,18 @@
+[Unit]
+Description=Panel privileged helper (root - whitelisted actions only)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+RuntimeDirectory=panel
+RuntimeDirectoryMode=0750
+Environment=HELPER_SOCKET_PATH=/run/panel/helper.sock
+WorkingDirectory=/opt/panel/helper
+ExecStart=/usr/bin/node dist/index.js
+ExecStartPost=/bin/chgrp panel /run/panel/helper.sock
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+[Unit]
+Description=Panel API (unprivileged)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=panel
+Group=panel
+WorkingDirectory=/opt/panel/apps/api
+EnvironmentFile=/opt/panel/apps/api/.env
+ExecStart=/usr/bin/node dist/server.js
+Restart=on-failure
+RestartSec=3
+
+# Hardening: the API process never needs root, network sockets beyond its
+# own port, or write access outside its own directory + logs.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/panel/apps/api
+
+[Install]
+WantedBy=multi-user.target
