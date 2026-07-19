@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
@@ -10,9 +10,14 @@ import DatabasesPage from "./pages/DatabasesPage";
 import DatabaseBrowserPage from "./pages/DatabaseBrowserPage";
 import FileManagerPage from "./pages/FileManagerPage";
 import DomainsPage from "./pages/DomainsPage";
+import AppsPage from "./pages/AppsPage";
 import { useAuthStore, setInitializing } from "./lib/authStore";
 import { refreshSession } from "./lib/api";
 import "./styles/theme.css";
+
+// xterm.js alone is ~300KB - split into its own chunk so it only loads for
+// admins who actually open the terminal, not on every page load.
+const TerminalPage = lazy(() => import("./pages/TerminalPage"));
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken);
@@ -105,6 +110,24 @@ function App() {
           element={
             <RequireAuth>
               <DomainsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/apps"
+          element={
+            <RequireAuth>
+              <AppsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/terminal"
+          element={
+            <RequireAuth>
+              <Suspense fallback={<FullScreenSpinner />}>
+                <TerminalPage />
+              </Suspense>
             </RequireAuth>
           }
         />
