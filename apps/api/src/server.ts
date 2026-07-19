@@ -4,6 +4,7 @@ import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
 import websocket from "@fastify/websocket";
+import multipart from "@fastify/multipart";
 
 import prismaPlugin from "./plugins/prisma.js";
 import authenticatePlugin from "./plugins/authenticate.js";
@@ -13,6 +14,7 @@ import sitesRoutes from "./routes/sites.js";
 import logsRoutes from "./routes/logs.js";
 import securityRoutes from "./routes/security.js";
 import databasesRoutes from "./routes/databases.js";
+import filesRoutes from "./routes/files.js";
 
 const app = Fastify({ logger: true });
 
@@ -20,6 +22,9 @@ await app.register(cors, { origin: true, credentials: true });
 await app.register(cookie);
 await app.register(rateLimit, { max: 100, timeWindow: "1 minute" });
 await app.register(websocket);
+// Disk on this box runs close to full, so uploads are capped well below any
+// real risk of filling it from one request.
+await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024 } });
 
 await app.register(prismaPlugin);
 await app.register(authenticatePlugin);
@@ -30,6 +35,7 @@ await app.register(sitesRoutes);
 await app.register(logsRoutes);
 await app.register(securityRoutes);
 await app.register(databasesRoutes);
+await app.register(filesRoutes);
 
 app.get("/health", async () => ({ ok: true }));
 

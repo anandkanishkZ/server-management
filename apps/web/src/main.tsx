@@ -8,6 +8,7 @@ import LogsPage from "./pages/LogsPage";
 import SecurityPage from "./pages/SecurityPage";
 import DatabasesPage from "./pages/DatabasesPage";
 import DatabaseBrowserPage from "./pages/DatabaseBrowserPage";
+import FileManagerPage from "./pages/FileManagerPage";
 import { useAuthStore, setInitializing } from "./lib/authStore";
 import { refreshSession } from "./lib/api";
 import "./styles/theme.css";
@@ -87,6 +88,14 @@ function App() {
           element={
             <RequireAuth>
               <DatabaseBrowserPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/files"
+          element={
+            <RequireAuth>
+              <FileManagerPage />
             </RequireAuth>
           }
         />
