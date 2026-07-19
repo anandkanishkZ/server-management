@@ -12,6 +12,7 @@ import systemRoutes from "./routes/system.js";
 import sitesRoutes from "./routes/sites.js";
 import logsRoutes from "./routes/logs.js";
 import securityRoutes from "./routes/security.js";
+import databasesRoutes from "./routes/databases.js";
 
 const app = Fastify({ logger: true });
 
@@ -28,6 +29,7 @@ await app.register(systemRoutes);
 await app.register(sitesRoutes);
 await app.register(logsRoutes);
 await app.register(securityRoutes);
+await app.register(databasesRoutes);
 
 app.get("/health", async () => ({ ok: true }));
 
