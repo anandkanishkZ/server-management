@@ -1,0 +1,99 @@
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import argon2 from "argon2";
+import { authenticator } from "otplib";
+import crypto from "node:crypto";
+import { signAccessToken } from "../lib/jwt.js";
+import { recordAudit } from "../lib/audit.js";
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  totpCode: z.string().length(6).optional(),
+});
+
+const REFRESH_COOKIE = "panel_refresh";
+
+export default async function authRoutes(app: FastifyInstance) {
+  app.post("/auth/login", async (req, reply) => {
+    const body = loginSchema.parse(req.body);
+
+    const user = await app.prisma.user.findUnique({ where: { email: body.email } });
+    if (!user) {
+      return reply.code(401).send({ error: "Invalid credentials" });
+    }
+
+    const passwordOk = await argon2.verify(user.passwordHash, body.password);
+    if (!passwordOk) {
+      await recordAudit(app, req, "auth.login.failed", user.id);
+      return reply.code(401).send({ error: "Invalid credentials" });
+    }
+
+    if (user.totpEnabled) {
+      if (!body.totpCode) {
+        return reply.code(200).send({ requiresTotp: true });
+      }
+      const totpOk = authenticator.verify({
+        token: body.totpCode,
+        secret: user.totpSecret ?? "",
+      });
+      if (!totpOk) {
+        await recordAudit(app, req, "auth.totp.failed", user.id);
+        return reply.code(401).send({ error: "Invalid 2FA code" });
+      }
+    }
+
+    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+
+    const refreshToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    await app.prisma.refreshToken.create({
+      data: { tokenHash, userId: user.id, expiresAt },
+    });
+
+    reply.setCookie(REFRESH_COOKIE, refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      path: "/auth",
+      expires: expiresAt,
+    });
+
+    await recordAudit(app, req, "auth.login.success", user.id);
+
+    return { accessToken, user: { id: user.id, email: user.email, role: user.role } };
+  });
+
+  app.post("/auth/refresh", async (req, reply) => {
+    const raw = req.cookies[REFRESH_COOKIE];
+    if (!raw) return reply.code(401).send({ error: "No refresh token" });
+
+    const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
+    const stored = await app.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+      return reply.code(401).send({ error: "Invalid refresh token" });
+    }
+
+    const accessToken = signAccessToken({ sub: stored.user.id, role: stored.user.role });
+    return { accessToken };
+  });
+
+  app.post("/auth/logout", async (req, reply) => {
+    const raw = req.cookies[REFRESH_COOKIE];
+    if (raw) {
+      const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
+      await app.prisma.refreshToken.updateMany({
+        where: { tokenHash },
+        data: { revokedAt: new Date() },
+      });
+    }
+    reply.clearCookie(REFRESH_COOKIE, { path: "/auth" });
+    return { ok: true };
+  });
+}
