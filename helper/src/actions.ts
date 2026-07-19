@@ -99,6 +99,29 @@ function assertValidEmail(email: string) {
   if (!email || !EMAIL_RE.test(email)) throw new Error(`invalid email "${email}"`);
 }
 
+// Same allowed root the File Manager uses - hosted apps only, never the
+// filesystem at large.
+const APPS_ROOT = "/home/ubuntu/app";
+const PM2_NAME_RE = /^[a-zA-Z0-9_-]{1,50}$/;
+const PROTECTED_PM2_NAMES = new Set(["panel-api"]);
+
+function resolveAppPath(relativePath: string): string {
+  const cleaned = (relativePath || "/").replace(/\\/g, "/");
+  const resolved = path.resolve(APPS_ROOT, `.${cleaned}`);
+  if (resolved !== APPS_ROOT && !resolved.startsWith(APPS_ROOT + path.sep)) {
+    throw new Error("path escapes the allowed apps root");
+  }
+  return resolved;
+}
+
+function assertValidPm2Name(name: string) {
+  if (!name || !PM2_NAME_RE.test(name)) throw new Error(`invalid process name "${name}"`);
+}
+
+function assertNotProtectedProcess(name: string) {
+  if (PROTECTED_PM2_NAMES.has(name)) throw new Error(`"${name}" is the panel's own process and can't be managed here`);
+}
+
 /**
  * Every entry here is a fixed function that calls execFile with an array of
  * arguments - never a template string handed to a shell. This is the entire
@@ -376,6 +399,66 @@ export const actions: Record<string, (args: Record<string, string>) => Promise<s
       email,
       "--redirect",
     ]);
+    return stdout + stderr;
+  },
+
+  "npm.install": async (args) => {
+    const appPath = args.path ?? "/";
+    const cwd = resolveAppPath(appPath);
+    // Runs as ubuntu (not root) so the resulting node_modules stays owned
+    // by the same user as the rest of the app tree and the PM2 daemon that
+    // will eventually run it.
+    const { stdout, stderr } = await execFileAsync("sudo", ["-H", "-u", PANEL_OS_USER, "npm", "install"], {
+      cwd,
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    return stdout + stderr;
+  },
+
+  "pm2.list": async () => {
+    const { stdout } = await execFileAsync("sudo", ["-H", "-u", PANEL_OS_USER, "pm2", "jlist"], { maxBuffer: 10 * 1024 * 1024 });
+    return stdout;
+  },
+
+  "pm2.start": async (args) => {
+    const name = args.name ?? "";
+    const appPath = args.path ?? "/";
+    const script = args.script ?? "";
+    assertValidPm2Name(name);
+    assertNotProtectedProcess(name);
+    if (!script || script.includes("..")) throw new Error(`invalid script path "${script}"`);
+
+    const cwd = resolveAppPath(appPath);
+    const scriptAbsolute = path.join(cwd, script);
+    if (!scriptAbsolute.startsWith(cwd)) throw new Error("script path escapes the app directory");
+
+    const { stdout, stderr } = await execFileAsync("sudo", ["-H", "-u", PANEL_OS_USER, "pm2", "start", scriptAbsolute, "--name", name], { cwd });
+    await execFileAsync("sudo", ["-H", "-u", PANEL_OS_USER, "pm2", "save"]);
+    return stdout + stderr;
+  },
+
+  "pm2.stop": async (args) => {
+    const name = args.name ?? "";
+    assertValidPm2Name(name);
+    assertNotProtectedProcess(name);
+    const { stdout, stderr } = await execFileAsync("sudo", ["-H", "-u", PANEL_OS_USER, "pm2", "stop", name]);
+    return stdout + stderr;
+  },
+
+  "pm2.restart": async (args) => {
+    const name = args.name ?? "";
+    assertValidPm2Name(name);
+    assertNotProtectedProcess(name);
+    const { stdout, stderr } = await execFileAsync("sudo", ["-H", "-u", PANEL_OS_USER, "pm2", "restart", name]);
+    return stdout + stderr;
+  },
+
+  "pm2.delete": async (args) => {
+    const name = args.name ?? "";
+    assertValidPm2Name(name);
+    assertNotProtectedProcess(name);
+    const { stdout, stderr } = await execFileAsync("sudo", ["-H", "-u", PANEL_OS_USER, "pm2", "delete", name]);
+    await execFileAsync("sudo", ["-H", "-u", PANEL_OS_USER, "pm2", "save"]);
     return stdout + stderr;
   },
 };
