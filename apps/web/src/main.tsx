@@ -11,8 +11,11 @@ import DatabaseBrowserPage from "./pages/DatabaseBrowserPage";
 import FileManagerPage from "./pages/FileManagerPage";
 import DomainsPage from "./pages/DomainsPage";
 import AppsPage from "./pages/AppsPage";
+import AuditLogPage from "./pages/AuditLogPage";
 import { useAuthStore, setInitializing } from "./lib/authStore";
 import { refreshSession } from "./lib/api";
+import ToastHost from "./components/ToastHost";
+import DialogHost from "./components/DialogHost";
 import "./styles/theme.css";
 
 // xterm.js alone is ~300KB - split into its own chunk so it only loads for
@@ -46,8 +49,11 @@ function App() {
   if (initializing) return <FullScreenSpinner />;
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <>
+      <ToastHost />
+      <DialogHost />
+      <BrowserRouter>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/"
@@ -122,6 +128,14 @@ function App() {
           }
         />
         <Route
+          path="/audit"
+          element={
+            <RequireAuth>
+              <AuditLogPage />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/terminal"
           element={
             <RequireAuth>
@@ -131,8 +145,9 @@ function App() {
             </RequireAuth>
           }
         />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 

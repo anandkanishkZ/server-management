@@ -18,6 +18,7 @@ import filesRoutes from "./routes/files.js";
 import domainsRoutes from "./routes/domains.js";
 import appsRoutes from "./routes/apps.js";
 import terminalRoutes from "./routes/terminal.js";
+import auditRoutes from "./routes/audit.js";
 
 const app = Fastify({ logger: true });
 
@@ -42,6 +43,7 @@ await app.register(filesRoutes);
 await app.register(domainsRoutes);
 await app.register(appsRoutes);
 await app.register(terminalRoutes);
+await app.register(auditRoutes);
 
 app.get("/health", async () => ({ ok: true }));
 
