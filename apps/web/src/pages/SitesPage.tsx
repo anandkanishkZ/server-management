@@ -29,6 +29,14 @@ export default function SitesPage() {
   const [togglingName, setTogglingName] = useState<string | null>(null);
   const [reloading, setReloading] = useState(false);
 
+  const [showNewSite, setShowNewSite] = useState(false);
+  const [newSiteType, setNewSiteType] = useState<"static" | "proxy">("proxy");
+  const [newDomain, setNewDomain] = useState("");
+  const [newAliases, setNewAliases] = useState("");
+  const [newRoot, setNewRoot] = useState("");
+  const [newPort, setNewPort] = useState("");
+  const [creating, setCreating] = useState(false);
+
   async function load() {
     try {
       const data = await apiFetch("/sites");
@@ -72,15 +80,91 @@ export default function SitesPage() {
     }
   }
 
+  async function handleCreateSite(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setCreating(true);
+    try {
+      const aliasDomains = newAliases
+        .split(/[,\s]+/)
+        .map((a) => a.trim())
+        .filter(Boolean);
+
+      const body =
+        newSiteType === "static"
+          ? { type: "static", domain: newDomain, aliasDomains, root: newRoot }
+          : { type: "proxy", domain: newDomain, aliasDomains, port: Number(newPort) };
+
+      await apiFetch("/sites", { method: "POST", body: JSON.stringify(body) });
+      setShowNewSite(false);
+      setNewDomain("");
+      setNewAliases("");
+      setNewRoot("");
+      setNewPort("");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create site");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <AppShell title="Sites">
       <div className="sites-toolbar">
+        <button className="btn btn-primary" onClick={() => setShowNewSite((v) => !v)}>
+          {showNewSite ? "Cancel" : "+ New Site"}
+        </button>
         <button className="btn" onClick={handleReload} disabled={reloading}>
           <RefreshIcon /> {reloading ? "Reloading…" : "Reload Nginx"}
         </button>
       </div>
 
       {error && <div className="error-toast">{error}</div>}
+
+      {showNewSite && (
+        <form className="new-site-form" onSubmit={handleCreateSite}>
+          <div className="rule-mode-tabs">
+            <button type="button" className={`rule-mode-tab ${newSiteType === "proxy" ? "active" : ""}`} onClick={() => setNewSiteType("proxy")}>
+              Reverse Proxy
+            </button>
+            <button type="button" className={`rule-mode-tab ${newSiteType === "static" ? "active" : ""}`} onClick={() => setNewSiteType("static")}>
+              Static Site
+            </button>
+          </div>
+
+          <div className="new-site-fields">
+            <label>
+              Domain
+              <input placeholder="example.com" value={newDomain} onChange={(e) => setNewDomain(e.target.value)} required />
+            </label>
+            <label>
+              Alias domains (optional)
+              <input placeholder="www.example.com" value={newAliases} onChange={(e) => setNewAliases(e.target.value)} />
+            </label>
+            {newSiteType === "proxy" ? (
+              <label>
+                Local port
+                <input placeholder="3000" value={newPort} onChange={(e) => setNewPort(e.target.value)} required />
+              </label>
+            ) : (
+              <label>
+                Document root
+                <input placeholder="/home/ubuntu/app/frontend/dist" value={newRoot} onChange={(e) => setNewRoot(e.target.value)} required />
+              </label>
+            )}
+          </div>
+
+          <p className="new-site-hint">
+            Creates a plain HTTP (port 80) config, tests it with <code>nginx -t</code>, and enables it - rolled back automatically if the test
+            fails. Add SSL afterward from the Domains &amp; SSL page.
+          </p>
+
+          <button type="submit" className="btn btn-primary" disabled={creating}>
+            {creating ? "Creating…" : "Create Site"}
+          </button>
+        </form>
+      )}
 
       {!sites ? (
         <p>Loading sites…</p>

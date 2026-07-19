@@ -116,6 +116,37 @@ export const actions: Record<string, (args: Record<string, string>) => Promise<s
     return stdout + stderr;
   },
 
+  "nginx.createSite": async (args) => {
+    const name = args.name ?? "";
+    const content = args.content ?? "";
+    assertValidSiteName(name);
+    if (!content.trim()) throw new Error("empty config content");
+
+    const availablePath = path.join(SITES_AVAILABLE, name);
+    const enabledPath = path.join(SITES_ENABLED, name);
+
+    if (await pathExists(availablePath)) {
+      throw new Error(`"${name}" already exists in sites-available`);
+    }
+
+    await fs.writeFile(availablePath, content, { flag: "wx" });
+
+    try {
+      await fs.symlink(availablePath, enabledPath);
+      const test = await testNginxConfig();
+      if (!test.ok) throw new Error(`nginx config test failed: ${test.output}`);
+      await execFileAsync("systemctl", ["reload", "nginx"]);
+    } catch (err) {
+      // Neither the symlink nor the config file existed before this call,
+      // so a failed test rolls back both rather than leaving an orphan.
+      await fs.unlink(enabledPath).catch(() => {});
+      await fs.unlink(availablePath).catch(() => {});
+      throw err;
+    }
+
+    return `${name} created and enabled`;
+  },
+
   "nginx.enableSite": async (args) => {
     const name = args.name ?? "";
     assertValidSiteName(name);
