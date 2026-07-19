@@ -145,6 +145,8 @@ export default function FileManagerPage() {
   const [editingFile, setEditingFile] = useState<{ path: string } | null>(null);
   const [editedContent, setEditedContent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const saveSuccessTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const [viewingTrash, setViewingTrash] = useState(false);
   const [trashEntries, setTrashEntries] = useState<TrashEntry[] | null>(null);
@@ -243,6 +245,7 @@ export default function FileManagerPage() {
       }
       setEditingFile({ path: filePath });
       setEditedContent(data.content);
+      setSaveSuccess(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to open file");
     }
@@ -251,12 +254,16 @@ export default function FileManagerPage() {
   async function saveFile() {
     if (!rootId || !editingFile) return;
     setSaving(true);
+    setSaveSuccess(false);
     setError(null);
     try {
       await apiFetch(`/files/content?root=${rootId}&path=${encodeURIComponent(editingFile.path)}`, {
         method: "PUT",
         body: JSON.stringify({ content: editedContent }),
       });
+      setSaveSuccess(true);
+      clearTimeout(saveSuccessTimer.current);
+      saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save file");
     } finally {
@@ -504,7 +511,15 @@ export default function FileManagerPage() {
           <div className="editor-header">
             <span>{editingFile.path}</span>
             <div className="fm-actions">
-              <button className="btn" onClick={() => setEditingFile(null)}>
+              {saveSuccess && <span className="save-success-badge">✓ Saved</span>}
+              <button
+                className="btn"
+                onClick={() => {
+                  clearTimeout(saveSuccessTimer.current);
+                  setSaveSuccess(false);
+                  setEditingFile(null);
+                }}
+              >
                 Close
               </button>
               <button className="btn btn-primary" onClick={saveFile} disabled={saving}>
