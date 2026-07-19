@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
+import PathAutocomplete from "../components/PathAutocomplete";
 import { apiFetch } from "../lib/api";
 import "./AppsPage.css";
 
@@ -135,7 +136,7 @@ export default function AppsPage() {
         </p>
 
         <div className="deploy-row">
-          <input placeholder="/path/relative/to/Hosted Apps, e.g. /my-new-app" value={deployPath} onChange={(e) => setDeployPath(e.target.value)} />
+          <PathAutocomplete value={deployPath} onChange={setDeployPath} placeholder="/path/relative/to/Hosted Apps, e.g. /my-new-app" />
           <button className="btn" onClick={handleInstall} disabled={installing || !deployPath.trim()}>
             {installing ? "Installing…" : "Install Dependencies (npm install)"}
           </button>
