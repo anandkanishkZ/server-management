@@ -1,0 +1,30 @@
+.terminal-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--warning-100);
+  color: var(--warning-500);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-size: 13px;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.terminal-warning strong {
+  color: var(--text-primary);
+}
+
+.terminal-wrap {
+  background: #0b0f16;
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  box-shadow: var(--shadow-sm);
+  height: calc(100vh - 260px);
+  min-height: 320px;
+}
+
+.terminal-mount {
+  height: 100%;
+  width: 100%;
+}
