@@ -1,0 +1,86 @@
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(15 23 42 / 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: dialog-fade 0.12s ease;
+}
+
+@keyframes dialog-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dialog-box {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  margin: 16px;
+  animation: dialog-pop 0.15s ease;
+}
+
+@keyframes dialog-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dialog-message {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.dialog-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+
+.dialog-input:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: var(--shadow-focus);
+}
+
+.dialog-input-mono {
+  font-family: var(--font-mono);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn-danger-solid {
+  background: var(--danger-500);
+  border-color: var(--danger-500);
+  color: #fff;
+}
+
+.btn-danger-solid:hover:not(:disabled) {
+  opacity: 0.9;
+}

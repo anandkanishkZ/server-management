@@ -1,3 +1,42 @@
+.health-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.health-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.health-alert-danger {
+  background: var(--danger-100);
+  color: var(--danger-500);
+}
+
+.health-alert-warn {
+  background: var(--warning-100);
+  color: var(--warning-500);
+}
+
+.health-alert-link {
+  color: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.health-alert-link:hover {
+  text-decoration: underline;
+}
+
 .live-pill {
   display: flex;
   align-items: center;

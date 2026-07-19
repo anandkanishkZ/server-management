@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import { apiFetch } from "../lib/api";
 import { getAccessToken } from "../lib/authStore";
+import { confirmDialog } from "../lib/dialogs";
+import { toast } from "../lib/toast";
 import "./DatabasesPage.css";
 
 interface DatabaseInfo {
@@ -41,6 +43,7 @@ export default function DatabasesPage() {
       const data = await apiFetch("/databases", { method: "POST", body: JSON.stringify({ name: newName }) });
       setCredentials(data);
       setNewName("");
+      toast(`Database "${data.name}" created`, "success");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create database");
@@ -48,16 +51,18 @@ export default function DatabasesPage() {
   }
 
   async function handleDrop(db: DatabaseInfo) {
-    const typed = window.prompt(`This permanently deletes all data in "${db.name}". Type the database name to confirm:`);
-    if (typed !== db.name) {
-      if (typed !== null) setError("Name didn't match - drop cancelled.");
-      return;
-    }
+    const ok = await confirmDialog(`This permanently deletes all data in "${db.name}". This cannot be undone.`, {
+      danger: true,
+      confirmLabel: "Drop database",
+      typeToConfirm: db.name,
+    });
+    if (!ok) return;
 
     setError(null);
     setBusyName(db.name);
     try {
       await apiFetch(`/databases/${encodeURIComponent(db.name)}`, { method: "DELETE" });
+      toast(`"${db.name}" dropped`, "success");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to drop database");
@@ -86,6 +91,7 @@ export default function DatabasesPage() {
       a.download = file;
       a.click();
       URL.revokeObjectURL(url);
+      toast("Dump downloaded", "success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to dump database");
     } finally {

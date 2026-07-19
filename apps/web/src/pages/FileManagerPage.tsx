@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import AppShell from "../components/AppShell";
 import { apiFetch } from "../lib/api";
 import { getAccessToken } from "../lib/authStore";
+import { confirmDialog, promptDialog } from "../lib/dialogs";
+import { toast } from "../lib/toast";
 import "./FileManagerPage.css";
 
 interface FileRoot {
@@ -277,11 +279,12 @@ export default function FileManagerPage() {
 
   async function handleNewFile() {
     if (!rootId) return;
-    const name = window.prompt("New file name:");
+    const name = await promptDialog("New file name:", { placeholder: "example.txt", confirmLabel: "Create" });
     if (!name) return;
     setError(null);
     try {
       await apiFetch("/files/create", { method: "POST", body: JSON.stringify({ root: rootId, path: currentPath, name }) });
+      toast(`${name} created`, "success");
       await loadDir(rootId, currentPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create file");
@@ -290,11 +293,12 @@ export default function FileManagerPage() {
 
   async function handleNewFolder() {
     if (!rootId) return;
-    const name = window.prompt("New folder name:");
+    const name = await promptDialog("New folder name:", { placeholder: "my-folder", confirmLabel: "Create" });
     if (!name) return;
     setError(null);
     try {
       await apiFetch("/files/mkdir", { method: "POST", body: JSON.stringify({ root: rootId, path: currentPath, name }) });
+      toast(`${name} created`, "success");
       await loadDir(rootId, currentPath);
       bumpTree();
     } catch (err) {
@@ -305,6 +309,7 @@ export default function FileManagerPage() {
   async function handleUpload(files: FileList | null) {
     if (!rootId || !files || files.length === 0) return;
     setError(null);
+    let succeeded = 0;
     for (const file of Array.from(files)) {
       const form = new FormData();
       form.append("file", file);
@@ -320,10 +325,12 @@ export default function FileManagerPage() {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error ?? "Upload failed");
         }
+        succeeded++;
       } catch (err) {
         setError(err instanceof Error ? err.message : `Failed to upload ${file.name}`);
       }
     }
+    if (succeeded > 0) toast(succeeded === 1 ? "File uploaded" : `${succeeded} of ${files.length} files uploaded`, "success");
     await loadDir(rootId, currentPath);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -353,7 +360,8 @@ export default function FileManagerPage() {
 
   async function handleDeleteSelected() {
     if (!rootId || selected.size === 0) return;
-    if (!window.confirm(`Move ${selected.size} item(s) to trash?`)) return;
+    const ok = await confirmDialog(`Move ${selected.size} item(s) to trash?`, { confirmLabel: "Move to trash" });
+    if (!ok) return;
     setError(null);
     for (const name of selected) {
       try {
@@ -362,6 +370,7 @@ export default function FileManagerPage() {
         setError(err instanceof Error ? err.message : `Failed to delete ${name}`);
       }
     }
+    toast(`${selected.size} item(s) moved to trash`, "success");
     await loadDir(rootId, currentPath);
     bumpTree();
   }
@@ -369,11 +378,12 @@ export default function FileManagerPage() {
   async function handleRenameSelected() {
     if (!rootId || selected.size !== 1) return;
     const name = [...selected][0];
-    const newName = window.prompt(`Rename "${name}" to:`, name);
+    const newName = await promptDialog(`Rename "${name}" to:`, { defaultValue: name, confirmLabel: "Rename" });
     if (!newName || newName === name) return;
     setError(null);
     try {
       await apiFetch("/files/rename", { method: "POST", body: JSON.stringify({ root: rootId, path: joinPath(currentPath, name), newName }) });
+      toast(`Renamed to ${newName}`, "success");
       await loadDir(rootId, currentPath);
       bumpTree();
     } catch (err) {
@@ -385,11 +395,12 @@ export default function FileManagerPage() {
     if (!rootId || selected.size !== 1) return;
     const name = [...selected][0];
     const entry = entries?.find((e) => e.name === name);
-    const mode = window.prompt(`Permissions for "${name}" (octal, e.g. 755):`, entry?.mode ?? "644");
+    const mode = await promptDialog(`Permissions for "${name}" (octal, e.g. 755):`, { defaultValue: entry?.mode ?? "644", confirmLabel: "Apply" });
     if (!mode) return;
     setError(null);
     try {
       await apiFetch("/files/chmod", { method: "POST", body: JSON.stringify({ root: rootId, path: joinPath(currentPath, name), mode }) });
+      toast(`Permissions updated to ${mode}`, "success");
       await loadDir(rootId, currentPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to change permissions");
@@ -398,7 +409,10 @@ export default function FileManagerPage() {
 
   async function handleCopyOrMove(mode: "copy" | "move") {
     if (!rootId || selected.size === 0) return;
-    const destFolder = window.prompt(`${mode === "copy" ? "Copy" : "Move"} ${selected.size} item(s) to which folder? (path from root)`, currentPath);
+    const destFolder = await promptDialog(`${mode === "copy" ? "Copy" : "Move"} ${selected.size} item(s) to which folder? (path from root)`, {
+      defaultValue: currentPath,
+      confirmLabel: mode === "copy" ? "Copy" : "Move",
+    });
     if (!destFolder) return;
 
     setError(null);
@@ -410,13 +424,14 @@ export default function FileManagerPage() {
         setError(err instanceof Error ? err.message : `Failed to ${mode} ${name}`);
       }
     }
+    toast(`${selected.size} item(s) ${mode === "copy" ? "copied" : "moved"}`, "success");
     await loadDir(rootId, currentPath);
     bumpTree();
   }
 
   async function handleCompressSelected() {
     if (!rootId || selected.size === 0) return;
-    const archiveName = window.prompt("Archive file name:", "archive.tar.gz");
+    const archiveName = await promptDialog("Archive file name:", { defaultValue: "archive.tar.gz", confirmLabel: "Compress" });
     if (!archiveName) return;
     setError(null);
     try {
@@ -424,6 +439,7 @@ export default function FileManagerPage() {
         method: "POST",
         body: JSON.stringify({ root: rootId, path: currentPath, names: [...selected], archiveName }),
       });
+      toast(`${archiveName} created`, "success");
       await loadDir(rootId, currentPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to compress");
@@ -437,6 +453,7 @@ export default function FileManagerPage() {
     setError(null);
     try {
       await apiFetch("/files/extract", { method: "POST", body: JSON.stringify({ root: rootId, path: joinPath(currentPath, name) }) });
+      toast(`${name} extracted`, "success");
       await loadDir(rootId, currentPath);
       bumpTree();
     } catch (err) {
@@ -466,6 +483,7 @@ export default function FileManagerPage() {
     setError(null);
     try {
       await apiFetch("/files/trash/restore", { method: "POST", body: JSON.stringify({ root: rootId, id }) });
+      toast("Item restored", "success");
       await loadTrash();
       bumpTree();
     } catch (err) {
@@ -475,10 +493,12 @@ export default function FileManagerPage() {
 
   async function handlePermanentDelete(id: string) {
     if (!rootId) return;
-    if (!window.confirm("Permanently delete this item? This cannot be undone.")) return;
+    const ok = await confirmDialog("Permanently delete this item? This cannot be undone.", { danger: true, confirmLabel: "Delete forever" });
+    if (!ok) return;
     setError(null);
     try {
       await apiFetch(`/files/trash/${id}?root=${rootId}`, { method: "DELETE" });
+      toast("Item permanently deleted", "success");
       await loadTrash();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
@@ -487,10 +507,15 @@ export default function FileManagerPage() {
 
   async function handleEmptyTrash() {
     if (!rootId) return;
-    if (!window.confirm("Permanently delete everything in the trash? This cannot be undone.")) return;
+    const ok = await confirmDialog("Permanently delete everything in the trash? This cannot be undone.", {
+      danger: true,
+      confirmLabel: "Empty trash",
+    });
+    if (!ok) return;
     setError(null);
     try {
       await apiFetch("/files/trash/empty", { method: "POST", body: JSON.stringify({ root: rootId }) });
+      toast("Trash emptied", "success");
       await loadTrash();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to empty trash");

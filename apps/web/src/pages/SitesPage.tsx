@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 import { apiFetch } from "../lib/api";
+import { confirmDialog } from "../lib/dialogs";
+import { toast } from "../lib/toast";
 import "./SitesPage.css";
 
 interface Site {
@@ -53,13 +55,15 @@ export default function SitesPage() {
   async function handleToggle(site: Site) {
     if (site.enabled) {
       const primary = site.serverNames[0] ?? site.name;
-      if (!window.confirm(`Disable ${primary}? This takes the site offline immediately.`)) return;
+      const ok = await confirmDialog(`Disable ${primary}? This takes the site offline immediately.`, { danger: true, confirmLabel: "Disable" });
+      if (!ok) return;
     }
 
     setError(null);
     setTogglingName(site.name);
     try {
       await apiFetch(`/sites/${encodeURIComponent(site.name)}/${site.enabled ? "disable" : "enable"}`, { method: "POST" });
+      toast(`${site.serverNames[0] ?? site.name} ${site.enabled ? "disabled" : "enabled"}`, "success");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Action failed");
@@ -73,6 +77,7 @@ export default function SitesPage() {
     setReloading(true);
     try {
       await apiFetch("/sites/reload", { method: "POST" });
+      toast("Nginx reloaded", "success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Reload failed");
     } finally {
@@ -96,6 +101,7 @@ export default function SitesPage() {
           : { type: "proxy", domain: newDomain, aliasDomains, port: Number(newPort) };
 
       await apiFetch("/sites", { method: "POST", body: JSON.stringify(body) });
+      toast(`${newDomain} created`, "success");
       setShowNewSite(false);
       setNewDomain("");
       setNewAliases("");

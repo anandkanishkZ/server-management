@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import { apiFetch } from "../lib/api";
+import { confirmDialog } from "../lib/dialogs";
+import { toast } from "../lib/toast";
 import "./DatabaseBrowserPage.css";
 
 interface TableRef {
@@ -149,7 +151,8 @@ export default function DatabaseBrowserPage() {
 
   async function handleDeleteRow(row: Row) {
     if (!selected) return;
-    if (!window.confirm(`Delete this row? ${JSON.stringify(rowPk(row))}`)) return;
+    const ok = await confirmDialog(`Delete this row? ${JSON.stringify(rowPk(row))}`, { danger: true, confirmLabel: "Delete" });
+    if (!ok) return;
 
     setError(null);
     try {
@@ -157,6 +160,7 @@ export default function DatabaseBrowserPage() {
         method: "DELETE",
         body: JSON.stringify({ pk: rowPk(row) }),
       });
+      toast("Row deleted", "success");
       await loadRows(selected, page, sortCol, sortDir);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete row");
@@ -175,6 +179,7 @@ export default function DatabaseBrowserPage() {
         method: "POST",
         body: JSON.stringify({ values }),
       });
+      toast("Row added", "success");
       setAdding(false);
       setDraft({});
       await loadRows(selected, page, sortCol, sortDir);

@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { getAccessToken } from "../lib/authStore";
 import { apiFetch } from "../lib/api";
 import AppShell from "../components/AppShell";
 import Sparkline from "../components/Sparkline";
 import "./DashboardPage.css";
+
+interface HealthAlert {
+  id: string;
+  level: "danger" | "warn";
+  message: string;
+  linkTo?: string;
+  linkLabel?: string;
+}
 
 interface StaticInfo {
   os: { distro: string; release: string; codename: string; kernel: string; arch: string; hostname: string };
@@ -125,6 +134,46 @@ export default function DashboardPage() {
   const cpuHistoryRef = useRef<number[]>([]);
   const netHistoryRef = useRef(new Map<string, number[]>());
   const [, forceTick] = useState(0);
+  const [healthAlerts, setHealthAlerts] = useState<HealthAlert[]>([]);
+
+  useEffect(() => {
+    // Best-effort - these two feed the health banner only, so a failure here
+    // (e.g. a future VIEWER-role user without admin access) shouldn't block
+    // the rest of the dashboard from rendering.
+    Promise.all([apiFetch("/domains").catch(() => null), apiFetch("/apps").catch(() => null)]).then(([domainsData, appsData]) => {
+      const alerts: HealthAlert[] = [];
+
+      for (const d of domainsData?.domains ?? []) {
+        if (d.hasCert && d.daysRemaining !== null && d.daysRemaining <= 14) {
+          alerts.push({
+            id: `ssl-${d.domain}`,
+            level: "danger",
+            message: `SSL for ${d.domain} expires in ${d.daysRemaining} day(s)`,
+            linkTo: "/domains",
+            linkLabel: "Renew",
+          });
+        }
+      }
+
+      for (const a of appsData?.apps ?? []) {
+        if (a.status !== "online") {
+          alerts.push({ id: `app-${a.name}`, level: "danger", message: `${a.name} is ${a.status}, not running`, linkTo: "/apps", linkLabel: "View" });
+        } else if (a.restarts > 10 && !a.protected) {
+          // panel-api's own restart count reflects every deploy of the panel
+          // itself, not crash-loop behavior, so it's excluded here.
+          alerts.push({
+            id: `app-restarts-${a.name}`,
+            level: "warn",
+            message: `${a.name} has restarted ${a.restarts} times - possible crash loop`,
+            linkTo: "/apps",
+            linkLabel: "View",
+          });
+        }
+      }
+
+      setHealthAlerts(alerts);
+    });
+  }, []);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -196,8 +245,36 @@ export default function DashboardPage() {
   const uptimeHours = Math.floor((stats.uptime % 86400) / 3600);
   const cores = staticInfo.cpu.cores || 1;
 
+  const primaryDisk = stats.disks.find((d) => d.mount === "/") ?? stats.disks[0];
+  const allAlerts: HealthAlert[] = [...healthAlerts];
+  if (primaryDisk && primaryDisk.use >= 85) {
+    const freeGb = fmtGb(primaryDisk.size - primaryDisk.used);
+    allAlerts.unshift({
+      id: "disk",
+      level: primaryDisk.use >= 90 ? "danger" : "warn",
+      message: `Disk usage is at ${primaryDisk.use.toFixed(0)}% (${freeGb} GB free on ${primaryDisk.mount})`,
+      linkTo: "/files",
+      linkLabel: "File Manager",
+    });
+  }
+
   return (
     <AppShell title="Overview" headerRight={headerRight}>
+      {allAlerts.length > 0 && (
+        <div className="health-alerts">
+          {allAlerts.map((a) => (
+            <div key={a.id} className={`health-alert health-alert-${a.level}`}>
+              <span>{a.message}</span>
+              {a.linkTo && (
+                <Link className="health-alert-link" to={a.linkTo}>
+                  {a.linkLabel ?? "View"} →
+                </Link>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="stat-grid">
         <div className="card system-card">
           <div className="card-header">

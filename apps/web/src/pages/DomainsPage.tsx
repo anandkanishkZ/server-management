@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 import { apiFetch } from "../lib/api";
+import { promptDialog } from "../lib/dialogs";
+import { toast } from "../lib/toast";
 
 interface DomainInfo {
   domain: string;
@@ -44,7 +46,8 @@ export default function DomainsPage() {
     setError(null);
     try {
       const result = await apiFetch(`/domains/${encodeURIComponent(d.certName)}/renew`, { method: "POST" });
-      window.alert(result.output || "Renewal check complete (no action needed if not yet due).");
+      const notDue = /not yet due/i.test(result.output ?? "");
+      toast(notDue ? `${d.domain}: not yet due for renewal` : `${d.domain}: renewed`, "success");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Renewal failed");
@@ -54,16 +57,17 @@ export default function DomainsPage() {
   }
 
   async function handleObtain(d: DomainInfo) {
-    const email = window.prompt(
-      `Issue a Let's Encrypt certificate for "${d.domain}"?\n\nThis requires ${d.domain} to already resolve (DNS) to this server. Enter a contact email for renewal notices:`
+    const email = await promptDialog(
+      `Issue a Let's Encrypt certificate for "${d.domain}"? This requires ${d.domain} to already resolve (DNS) to this server. Enter a contact email for renewal notices:`,
+      { placeholder: "you@example.com", confirmLabel: "Issue certificate" }
     );
     if (!email) return;
 
     setBusy(d.domain);
     setError(null);
     try {
-      const result = await apiFetch("/domains/obtain", { method: "POST", body: JSON.stringify({ domain: d.domain, email }) });
-      window.alert(result.output || "Certificate issued.");
+      await apiFetch("/domains/obtain", { method: "POST", body: JSON.stringify({ domain: d.domain, email }) });
+      toast(`Certificate issued for ${d.domain}`, "success");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to obtain certificate");

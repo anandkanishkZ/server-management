@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 import PathAutocomplete from "../components/PathAutocomplete";
 import { apiFetch } from "../lib/api";
+import { confirmDialog } from "../lib/dialogs";
+import { toast } from "../lib/toast";
 import "./AppsPage.css";
 
 interface Pm2App {
@@ -73,6 +75,7 @@ export default function AppsPage() {
     try {
       const result = await apiFetch("/apps/install", { method: "POST", body: JSON.stringify({ path: deployPath }) });
       setInstallOutput(result.output || "(no output)");
+      toast("Dependencies installed", "success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Install failed");
     } finally {
@@ -86,6 +89,7 @@ export default function AppsPage() {
     setStarting(true);
     try {
       await apiFetch("/apps/start", { method: "POST", body: JSON.stringify({ name: startName, path: deployPath, script: startScript }) });
+      toast(`${startName} started`, "success");
       setStartName("");
       setStartScript("");
       await load();
@@ -101,6 +105,7 @@ export default function AppsPage() {
     setBusyName(name);
     try {
       await apiFetch(`/apps/${encodeURIComponent(name)}/${action}`, { method: "POST" });
+      toast(`${name} ${action === "stop" ? "stopped" : "restarted"}`, "success");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to ${action}`);
@@ -110,11 +115,16 @@ export default function AppsPage() {
   }
 
   async function handleDelete(app: Pm2App) {
-    if (!window.confirm(`Delete PM2 process "${app.name}"? This stops it and removes it from PM2 (the files on disk are untouched).`)) return;
+    const ok = await confirmDialog(`Delete PM2 process "${app.name}"? This stops it and removes it from PM2 (the files on disk are untouched).`, {
+      danger: true,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setError(null);
     setBusyName(app.name);
     try {
       await apiFetch(`/apps/${encodeURIComponent(app.name)}`, { method: "DELETE" });
+      toast(`${app.name} deleted`, "success");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");

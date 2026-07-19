@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 import { apiFetch } from "../lib/api";
+import { confirmDialog } from "../lib/dialogs";
+import { toast } from "../lib/toast";
 import "./SecurityPage.css";
 
 interface UfwRule {
@@ -61,23 +63,28 @@ export default function SecurityPage() {
     }
   }
 
-  function handleEnable() {
-    if (
-      !window.confirm(
-        "Enabling the firewall applies a default-deny policy immediately. Make sure SSH (22), HTTP (80/8080) and HTTPS (443) are already in the allow list below, or you may lose remote access to this server. Continue?"
-      )
-    )
-      return;
+  async function handleEnable() {
+    const ok = await confirmDialog(
+      "Enabling the firewall applies a default-deny policy immediately. Make sure SSH (22), HTTP (80/8080) and HTTPS (443) are already in the allow list below, or you may lose remote access to this server.",
+      { danger: true, confirmLabel: "Enable Firewall" }
+    );
+    if (!ok) return;
     withBusy(async () => {
       await apiFetch("/security/firewall/enable", { method: "POST" });
+      toast("Firewall enabled", "success");
       await loadAll();
     });
   }
 
-  function handleDisable() {
-    if (!window.confirm("Disable the firewall? All traffic will be allowed through until it's re-enabled.")) return;
+  async function handleDisable() {
+    const ok = await confirmDialog("Disable the firewall? All traffic will be allowed through until it's re-enabled.", {
+      danger: true,
+      confirmLabel: "Disable Firewall",
+    });
+    if (!ok) return;
     withBusy(async () => {
       await apiFetch("/security/firewall/disable", { method: "POST" });
+      toast("Firewall disabled", "success");
       await loadAll();
     });
   }
@@ -87,27 +94,38 @@ export default function SecurityPage() {
     withBusy(async () => {
       if (ruleMode === "allow") {
         await apiFetch("/security/firewall/allow", { method: "POST", body: JSON.stringify({ port: Number(port), proto }) });
+        toast(`Allowed ${port}/${proto}`, "success");
         setPort("");
       } else {
         await apiFetch("/security/firewall/deny", { method: "POST", body: JSON.stringify({ ip: denyIp }) });
+        toast(`Blocked ${denyIp}`, "success");
         setDenyIp("");
       }
       await loadAll();
     });
   }
 
-  function handleDeleteRule(rule: UfwRule) {
-    if (!window.confirm(`Delete rule #${rule.number} (${rule.action} ${rule.target} from ${rule.from})?`)) return;
+  async function handleDeleteRule(rule: UfwRule) {
+    const ok = await confirmDialog(`Delete rule #${rule.number} (${rule.action} ${rule.target} from ${rule.from})?`, {
+      danger: true,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     withBusy(async () => {
       await apiFetch(`/security/firewall/rules/${rule.number}`, { method: "DELETE" });
+      toast(`Rule #${rule.number} deleted`, "success");
       await loadAll();
     });
   }
 
-  function handleInstallFail2ban() {
-    if (!window.confirm("Install Fail2Ban with the default SSH jail? This installs a new system package.")) return;
+  async function handleInstallFail2ban() {
+    const ok = await confirmDialog("Install Fail2Ban with the default SSH jail? This installs a new system package.", {
+      confirmLabel: "Install",
+    });
+    if (!ok) return;
     withBusy(async () => {
       await apiFetch("/security/fail2ban/install", { method: "POST" });
+      toast("Fail2Ban installed", "success");
       await loadAll();
     });
   }
@@ -115,6 +133,7 @@ export default function SecurityPage() {
   function handleUnban(jail: string, ip: string) {
     withBusy(async () => {
       await apiFetch(`/security/fail2ban/${jail}/unban`, { method: "POST", body: JSON.stringify({ ip }) });
+      toast(`${ip} unbanned`, "success");
       await loadAll();
     });
   }
@@ -124,6 +143,7 @@ export default function SecurityPage() {
     if (!ip) return;
     withBusy(async () => {
       await apiFetch(`/security/fail2ban/${jail}/ban`, { method: "POST", body: JSON.stringify({ ip }) });
+      toast(`${ip} banned`, "success");
       setBanInputs((prev) => ({ ...prev, [jail]: "" }));
       await loadAll();
     });
