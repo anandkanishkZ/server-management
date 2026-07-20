@@ -79,6 +79,10 @@ log "Starting PostgreSQL"
 systemctl enable --now postgresql
 
 log "Fetching the panel source"
+# This directory ends up owned by $PANEL_USER (see chown further down), so a
+# re-run - which does this step as root - trips git's "dubious ownership"
+# check without this.
+git config --global --add safe.directory "$INSTALL_DIR"
 if [ -d "$INSTALL_DIR/.git" ]; then
   git -C "$INSTALL_DIR" pull --ff-only
 elif [ -e "$INSTALL_DIR" ]; then
