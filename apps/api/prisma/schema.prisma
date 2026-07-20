@@ -12,11 +12,17 @@ enum Role {
   VIEWER
 }
 
+enum AuthProvider {
+  LOCAL
+  SYSTEM
+}
+
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(ADMIN)
+  id           String       @id @default(uuid())
+  email        String       @unique
+  passwordHash String?
+  authProvider AuthProvider @default(LOCAL)
+  role         Role         @default(ADMIN)
   totpSecret   String?
   totpEnabled  Boolean  @default(false)
   createdAt    DateTime @default(now())

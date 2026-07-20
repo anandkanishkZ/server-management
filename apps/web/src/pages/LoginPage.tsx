@@ -66,7 +66,7 @@ function ArrowLeftIcon() {
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -80,7 +80,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const body: Record<string, string> = { email, password };
+      const body: Record<string, string> = { identifier, password };
       if (needsTotp) body.totpCode = totpCode;
 
       const data = await apiFetch("/auth/login", { method: "POST", body: JSON.stringify(body) });
@@ -116,16 +116,16 @@ export default function LoginPage() {
           {!needsTotp ? (
             <>
               <div className="field">
-                <label htmlFor="email">Email address</label>
+                <label htmlFor="identifier">Email or username</label>
                 <div className="input-wrap">
                   <MailIcon />
                   <input
-                    id="email"
-                    type="email"
+                    id="identifier"
+                    type="text"
                     autoComplete="username"
-                    placeholder="you@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com or ubuntu"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     required
                     autoFocus
                   />

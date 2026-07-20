@@ -5,12 +5,15 @@ import { authenticator } from "otplib";
 import crypto from "node:crypto";
 import { signAccessToken } from "../lib/jwt.js";
 import { recordAudit } from "../lib/audit.js";
+import { isSystemLoginUser, verifySystemPassword } from "../lib/systemAuth.js";
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
+  identifier: z.string().min(1),
+  password: z.string().min(1),
   totpCode: z.string().length(6).optional(),
 });
+
+const SYSTEM_ACCOUNT_DOMAIN = "system.local";
 
 const REFRESH_COOKIE = "panel_refresh";
 // Browsers silently drop `Secure` cookies over plain HTTP. Default to secure
@@ -19,18 +22,39 @@ const REFRESH_COOKIE = "panel_refresh";
 const COOKIE_SECURE = process.env.COOKIE_SECURE !== "false";
 
 export default async function authRoutes(app: FastifyInstance) {
-  app.post("/auth/login", async (req, reply) => {
+  app.post(
+    "/auth/login",
+    { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } },
+    async (req, reply) => {
     const body = loginSchema.parse(req.body);
 
-    const user = await app.prisma.user.findUnique({ where: { email: body.email } });
-    if (!user) {
-      return reply.code(401).send({ error: "Invalid credentials" });
-    }
+    let user;
 
-    const passwordOk = await argon2.verify(user.passwordHash, body.password);
-    if (!passwordOk) {
-      await recordAudit(app, req, "auth.login.failed", user.id);
-      return reply.code(401).send({ error: "Invalid credentials" });
+    if (isSystemLoginUser(body.identifier)) {
+      const ok = await verifySystemPassword(body.identifier, body.password);
+      if (!ok) {
+        await recordAudit(app, req, "auth.system_login.failed", body.identifier);
+        return reply.code(401).send({ error: "Invalid credentials" });
+      }
+
+      const systemEmail = `${body.identifier}@${SYSTEM_ACCOUNT_DOMAIN}`;
+      user = await app.prisma.user.upsert({
+        where: { email: systemEmail },
+        update: {},
+        create: { email: systemEmail, authProvider: "SYSTEM", role: "ADMIN" },
+      });
+    } else {
+      const found = await app.prisma.user.findUnique({ where: { email: body.identifier } });
+      if (!found || found.authProvider !== "LOCAL" || !found.passwordHash) {
+        return reply.code(401).send({ error: "Invalid credentials" });
+      }
+
+      const passwordOk = await argon2.verify(found.passwordHash, body.password);
+      if (!passwordOk) {
+        await recordAudit(app, req, "auth.login.failed", found.id);
+        return reply.code(401).send({ error: "Invalid credentials" });
+      }
+      user = found;
     }
 
     if (user.totpEnabled) {
