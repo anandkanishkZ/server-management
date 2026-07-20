@@ -101,7 +101,7 @@ function assertValidEmail(email: string) {
 
 // Same allowed root the File Manager uses - hosted apps only, never the
 // filesystem at large.
-const APPS_ROOT = "/home/ubuntu/app";
+const APPS_ROOT = `/home/${PANEL_OS_USER}/app`;
 const PM2_NAME_RE = /^[a-zA-Z0-9_-]{1,50}$/;
 const PROTECTED_PM2_NAMES = new Set(["panel-api"]);
 

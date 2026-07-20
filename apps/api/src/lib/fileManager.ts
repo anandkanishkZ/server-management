@@ -16,7 +16,12 @@ export interface FileRoot {
 // Deliberately narrow: only the actual hosted-app directories, not the whole
 // filesystem. Add more roots here as needed, never accept an arbitrary path
 // from the client.
-const ROOTS: FileRoot[] = [{ id: "apps", label: "Hosted Apps", path: "/home/ubuntu/app" }];
+//
+// Rooted under the panel's own OS user's home directory - home directories
+// are 0700 by default, so this only works when PANEL_OS_USER is the same
+// account the API process runs as (which is how the installer sets it up).
+const PANEL_OS_USER = process.env.PANEL_OS_USER ?? "ubuntu";
+const ROOTS: FileRoot[] = [{ id: "apps", label: "Hosted Apps", path: `/home/${PANEL_OS_USER}/app` }];
 
 const MAX_EDITABLE_SIZE = 2 * 1024 * 1024; // 2 MB
 const TRASH_DIR = ".panel-trash";

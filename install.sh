@@ -52,7 +52,7 @@ fi
 log "Installing system packages (this can take a few minutes)"
 apt-get update -y
 apt-get install -y curl ca-certificates gnupg git build-essential python3 \
-  nginx postgresql postgresql-contrib ufw openssl
+  nginx postgresql postgresql-contrib ufw openssl certbot python3-certbot-nginx
 
 if ! command -v node >/dev/null 2>&1; then
   log "Installing Node.js ${NODE_MAJOR}.x"
@@ -69,6 +69,11 @@ log "Ensuring the panel system user exists"
 if ! id -u "$PANEL_USER" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$PANEL_USER"
 fi
+# Needed to read Nginx's logs (root:adm 640 by default) from the Logs page.
+usermod -aG adm "$PANEL_USER"
+# Root for the File Manager's "Hosted Apps" view and where deployed apps live.
+mkdir -p "/home/$PANEL_USER/app"
+chown "$PANEL_USER:$PANEL_USER" "/home/$PANEL_USER/app"
 
 log "Starting PostgreSQL"
 systemctl enable --now postgresql
@@ -153,9 +158,12 @@ log "Installing systemd services"
 cp "$INSTALL_DIR/deploy/panel-helper.service" /etc/systemd/system/panel-helper.service
 cp "$INSTALL_DIR/deploy/panel-api.service" /etc/systemd/system/panel-api.service
 systemctl daemon-reload
-systemctl enable --now panel-helper
+systemctl enable panel-helper panel-api
+# restart (not just start) so re-running this script after a fix actually
+# picks up unit file / build changes on a box that's already running.
+systemctl restart panel-helper
 sleep 1
-systemctl enable --now panel-api
+systemctl restart panel-api
 
 log "Configuring Nginx"
 NGINX_CONF=/etc/nginx/sites-available/panel
